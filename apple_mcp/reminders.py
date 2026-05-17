@@ -203,19 +203,23 @@ def complete_reminder(title: str, list_name: str) -> str:
     escaped_title = escape(title)
     escaped_list = escape(list_name)
 
+    # Avoid `whose completed is false` — same slow-scan pathology as
+    # list_reminders. Iterate all + filter in-loop with early exit on match.
     script = f'''
         tell application "Reminders"
             set l to list "{escaped_list}"
-            repeat with r in (reminders of l whose completed is false)
-                if name of r is "{escaped_title}" then
-                    set completed of r to true
-                    return "OK"
+            repeat with r in reminders of l
+                if completed of r is false then
+                    if name of r is "{escaped_title}" then
+                        set completed of r to true
+                        return "OK"
+                    end if
                 end if
             end repeat
             return "NOT_FOUND"
         end tell
     '''
-    result = run(script)
+    result = run(script, timeout=60)
     if result == "NOT_FOUND":
         return f"Reminder not found: {title} in {list_name}"
     return f"Completed reminder: {title}"
